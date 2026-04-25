@@ -36,8 +36,8 @@ export function useHandTracking(props: UseHandTrackingProps) {
     cancelledRef.current = false
     initLandmarker()
     return teardown
-    // reason: helpers só leem refs (estáveis); incluí-los re-rodaria o efeito a cada render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
   }, [enabled, videoRef, canvasRef])
 
   async function initLandmarker() {
@@ -118,7 +118,7 @@ export function useHandTracking(props: UseHandTrackingProps) {
     const canvas = canvasRef.current
     if (canvas) drawSkeleton(canvas, imageLandmarks, true)
 
-    // Gate 1: palma muito edge-on → base mal condicionada, descarta frame.
+
     const palmConfidence = computePalmConfidence(worldLandmarks)
     if (palmConfidence < HAND_TRACKING_CONFIG.palmConfidenceMin) return
 
@@ -129,7 +129,7 @@ export function useHandTracking(props: UseHandTrackingProps) {
       handQuat.set(-handQuat.x, -handQuat.y, -handQuat.z, -handQuat.w)
     }
 
-    // Gate 2: salto angular grande entre frames → provável flip espúrio.
+
     if (last) {
       const dot = Math.min(1, Math.abs(handQuat.dot(last)))
       const angle = 2 * Math.acos(dot)

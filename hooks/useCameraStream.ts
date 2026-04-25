@@ -23,8 +23,8 @@ export function useCameraStream(props: UseCameraStreamProps) {
     cancelledRef.current = false
     startStream()
     return stopStream
-    // reason: helpers só leem refs/setter estável do zustand
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
   }, [enabled, videoRef])
 
   async function startStream() {

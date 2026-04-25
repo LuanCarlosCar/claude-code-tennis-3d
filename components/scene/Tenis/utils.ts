@@ -10,9 +10,6 @@ export const MIN_DELTA_SECONDS = 0.001
 export const DEFAULT_BODY_COLOR = '#1a1a1a'
 export const DEFAULT_ACCENT_COLOR = '#d4a98a'
 
-// reason: One-Euro filter — cutoff sobe com velocidade angular, então paradas
-// suavizam jitter e movimentos rápidos respondem mais. O cap em
-// ROTATION_MAX_ALPHA evita "snap" quando alpha estourar.
 export function computeOneEuroAlpha(
   current: THREE.Quaternion,
   previous: THREE.Quaternion | null,

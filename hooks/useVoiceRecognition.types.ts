@@ -37,7 +37,7 @@ export interface SpeechRecognitionInstance {
 export type SpeechRecognitionCtor = new () => SpeechRecognitionInstance
 
 export function getSpeechRecognitionCtor(): SpeechRecognitionCtor | undefined {
-  // reason: Web Speech API is browser-vendored and not in standard lib.dom types
+
   const win = window as unknown as {
     SpeechRecognition?: SpeechRecognitionCtor
     webkitSpeechRecognition?: SpeechRecognitionCtor

@@ -35,8 +35,8 @@ export function useVoiceRecognition(props: UseVoiceRecognitionProps) {
   useEffect(() => {
     if (!enabled) return
     return startRecognition()
-    // reason: helpers leem apenas refs e setters estáveis do zustand
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
   }, [enabled])
 
   function startRecognition(): () => void {
@@ -105,7 +105,7 @@ export function useVoiceRecognition(props: UseVoiceRecognitionProps) {
     try {
       recognition.start()
     } catch {
-      // restart can race with the browser's own stop — safe to ignore
+
     }
   }
 
@@ -114,7 +114,7 @@ export function useVoiceRecognition(props: UseVoiceRecognitionProps) {
     try {
       recognition.stop()
     } catch {
-      // noop
+
     }
     recognition.onstart = null
     recognition.onresult = null

@@ -7,12 +7,12 @@ export const HAND_TRACKING_CONFIG = {
     'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm',
   handLandmarkerModel:
     'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-  // Estabilização: descarta frames onde a base da palma está mal condicionada
-  // (edge-on) ou onde o quaternion deu salto angular grande (provável flip
-  // espúrio do MediaPipe).
+
+
+
   palmConfidenceMin: 0.4,
-  maxFrameDeltaRad: Math.PI / 6, // 30°
-  // Mapeamento tamanho-da-palma → distância da câmera (zoom).
+  maxFrameDeltaRad: Math.PI / 6,
+
   palmSizeMin: 0.16,
   palmSizeMax: 0.5,
   cameraDistFar: 4.0,
@@ -26,9 +26,6 @@ export const SKELETON_DOT_RADIUS = 3
 export const WRIST_INDEX = 0
 export const MIDDLE_MCP_INDEX = 9
 
-// Offset fixo aplicado no frame local do tênis ANTES da rotação da mão.
-// Alinha o eixo Y local (topo do cano) com a normal da palma INVERTIDA, fazendo
-// a SOLA encostar na palma e o cano apontar pra fora.
 export const SHOE_GRIP_OFFSET = new THREE.Quaternion().setFromEuler(
   new THREE.Euler(Math.PI / 2, 0, 0),
 )

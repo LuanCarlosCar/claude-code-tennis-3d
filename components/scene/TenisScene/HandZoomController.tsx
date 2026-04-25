@@ -22,8 +22,8 @@ export default function HandZoomController() {
     const dir = camera.position.length()
     if (dir < MIN_CAMERA_DISTANCE_EPSILON) return
 
-    // reason: clamp alpha pra que aproximação/afastamento da mão sejam
-    // amaciados em várias frames, evitando salto de zoom por jitter.
+
+
     const lerpFactor = 1 - Math.pow(HAND_ZOOM_TIME_CONSTANT, delta)
     const alpha = Math.min(lerpFactor, HAND_ZOOM_MAX_ALPHA)
     const next = THREE.MathUtils.lerp(dir, target, alpha)
