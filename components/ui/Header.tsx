@@ -1,3 +1,6 @@
+const NAV_ITEMS = ['Coleção', 'Drops', 'Tecnologia', 'Suporte'] as const
+const LINKEDIN_URL = 'https://www.linkedin.com/in/luan-carlos-a3a08a123/'
+
 export default function Header() {
   return (
     <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
@@ -16,7 +19,7 @@ export default function Header() {
         </div>
 
         <nav className="ml-4 hidden items-center gap-6 lg:flex">
-          {['Coleção', 'Drops', 'Tecnologia', 'Suporte'].map((item) => (
+          {NAV_ITEMS.map((item) => (
             <a
               key={item}
               href="#"
@@ -35,7 +38,7 @@ export default function Header() {
         </div>
 
         <a
-          href="https://www.linkedin.com/in/luan-carlos-a3a08a123/"
+          href={LINKEDIN_URL}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="LinkedIn do desenvolvedor"

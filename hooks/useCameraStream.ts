@@ -1,4 +1,4 @@
-import { useEffect, RefObject } from 'react'
+import { useEffect, RefObject, useRef } from 'react'
 import { useHandStore } from '@/lib/handStore'
 
 interface UseCameraStreamProps {
@@ -6,48 +6,55 @@ interface UseCameraStreamProps {
   enabled: boolean
 }
 
+const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
+  video: { width: 640, height: 480, facingMode: 'user' },
+  audio: false,
+}
+
 export function useCameraStream(props: UseCameraStreamProps) {
   const { videoRef, enabled } = props
   const setCameraPermission = useHandStore((s) => s.setCameraPermission)
 
+  const streamRef = useRef<MediaStream | null>(null)
+  const cancelledRef = useRef(false)
+
   useEffect(() => {
     if (!enabled) return
+    cancelledRef.current = false
+    startStream()
+    return stopStream
+    // reason: helpers só leem refs/setter estável do zustand
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, videoRef])
 
-    let stream: MediaStream | null = null
-    let cancelled = false
-
-    async function start() {
-      try {
-        setCameraPermission('requesting')
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' },
-          audio: false,
-        })
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop())
-          stream = null
-          return
-        }
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-        }
-        setCameraPermission('granted')
-      } catch (err) {
-        console.error('[camera] getUserMedia failed:', err)
-        setCameraPermission('denied')
-      }
-    }
-
-    start()
-
-    return () => {
-      cancelled = true
-      if (stream) {
+  async function startStream() {
+    try {
+      setCameraPermission('requesting')
+      const stream = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS)
+      if (cancelledRef.current) {
         stream.getTracks().forEach((t) => t.stop())
+        return
       }
+      streamRef.current = stream
       if (videoRef.current) {
-        videoRef.current.srcObject = null
+        videoRef.current.srcObject = stream
       }
+      setCameraPermission('granted')
+    } catch (err) {
+      console.error('[camera] getUserMedia failed:', err)
+      setCameraPermission('denied')
     }
-  }, [enabled, videoRef, setCameraPermission])
+  }
+
+  function stopStream() {
+    cancelledRef.current = true
+    const stream = streamRef.current
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+  }
 }

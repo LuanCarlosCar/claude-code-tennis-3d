@@ -35,16 +35,14 @@ export default function CameraPreview() {
       <div className="relative aspect-4/3">
         <video
           ref={videoRef}
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ transform: 'scaleX(-1)' }}
+          className="absolute inset-0 h-full w-full object-cover -scale-x-100"
           playsInline
           muted
           autoPlay
         />
         <canvas
           ref={canvasRef}
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          style={{ transform: 'scaleX(-1)' }}
+          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100"
           width={640}
           height={480}
         />

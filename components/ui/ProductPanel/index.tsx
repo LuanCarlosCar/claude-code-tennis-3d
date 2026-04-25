@@ -1,19 +1,15 @@
 'use client'
 
 import { SHOE_COLORS } from '@/lib/colors'
+import { FEATURES } from './constants'
+import Rating from './Rating'
+import VariantSelector from './VariantSelector'
+import SizeSelector from './SizeSelector'
 
 type Props = {
   colorIndex: number
   onSelectVariant: (index: number) => void
 }
-
-const SIZES = ['38', '39', '40', '41', '42', '43', '44']
-const FEATURES = [
-  'Cabedal PrimeKnit reciclado',
-  'Solado contínuo de borracha',
-  'Drop 8mm · 312g (tam 41)',
-  'Numerado · Edição limitada',
-]
 
 export default function ProductPanel(props: Props) {
   const { colorIndex, onSelectVariant } = props
@@ -99,101 +95,5 @@ export default function ProductPanel(props: Props) {
         <span>Drop 25/04</span>
       </div>
     </aside>
-  )
-}
-
-function Rating() {
-  return (
-    <div className="flex items-center gap-2 font-mono text-[11px] text-white/60">
-      <div className="flex gap-0.5 text-amber-300">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <svg
-            key={i}
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden
-          >
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
-        ))}
-      </div>
-      <span className="text-white/80">4.8</span>
-      <span className="text-white/40">·</span>
-      <span>1.247 avaliações</span>
-    </div>
-  )
-}
-
-function VariantSelector(props: Props) {
-  const { colorIndex, onSelectVariant } = props
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">
-        <span>Cor</span>
-        <span className="text-white/30">{SHOE_COLORS[colorIndex].shortLabel}</span>
-      </div>
-      <div className="flex gap-2">
-        {SHOE_COLORS.map((v, i) => {
-          const isActive = i === colorIndex
-          return (
-            <button
-              key={v.name}
-              type="button"
-              onClick={() => onSelectVariant(i)}
-              aria-label={`Selecionar variante ${v.label}`}
-              aria-pressed={isActive}
-              className={`group relative flex flex-1 items-center gap-2.5 rounded-full border px-3 py-2 font-mono text-[11px] tracking-wide transition-all backdrop-blur-md ${
-                isActive
-                  ? 'border-white/40 bg-white/15 text-white'
-                  : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <span
-                className="block h-4 w-4 rounded-full border border-white/20 shadow-inner"
-                style={{
-                  backgroundImage: `linear-gradient(135deg, ${v.swatch.body} 0% 60%, ${v.swatch.accent} 60% 100%)`,
-                }}
-                aria-hidden
-              />
-              <span className="truncate">{v.shortLabel}</span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function SizeSelector() {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">
-        <span>Tamanho · BR</span>
-        <a href="#" className="text-white/40 hover:text-white">
-          Guia →
-        </a>
-      </div>
-      <div className="flex gap-1.5">
-        {SIZES.map((size) => {
-          const isSelected = size === '41'
-          return (
-            <button
-              key={size}
-              type="button"
-              aria-pressed={isSelected}
-              className={`flex-1 rounded-md border px-2 py-2 font-mono text-xs transition-all ${
-                isSelected
-                  ? 'border-white/40 bg-white text-neutral-950'
-                  : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              {size}
-            </button>
-          )
-        })}
-      </div>
-    </div>
   )
 }

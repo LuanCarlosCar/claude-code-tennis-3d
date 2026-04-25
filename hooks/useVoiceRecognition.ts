@@ -1,123 +1,64 @@
 import { useEffect, useRef } from 'react'
 import { useHandStore } from '@/lib/handStore'
 import { matchVoiceCommand } from '@/lib/voiceMatcher'
-
-interface SpeechRecognitionAlternative {
-  transcript: string
-  confidence: number
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean
-  0: SpeechRecognitionAlternative
-}
-
-interface SpeechRecognitionResultList {
-  length: number
-  [index: number]: SpeechRecognitionResult
-}
-
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList
-}
-
-interface SpeechRecognitionErrorEvent {
-  error: string
-}
-
-interface SpeechRecognitionInstance {
-  lang: string
-  continuous: boolean
-  interimResults: boolean
-  maxAlternatives: number
-  onstart: (() => void) | null
-  onresult: ((event: SpeechRecognitionEvent) => void) | null
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-}
-
-type SpeechRecognitionCtor = new () => SpeechRecognitionInstance
+import {
+  SpeechRecognitionErrorEvent,
+  SpeechRecognitionEvent,
+  SpeechRecognitionInstance,
+  extractFinalTranscript,
+  getSpeechRecognitionCtor,
+  isPermissionDeniedError,
+} from './useVoiceRecognition.types'
 
 interface UseVoiceRecognitionProps {
   enabled: boolean
   onColorRecognized: (color: string | null) => void
 }
 
+const RECOGNITION_LANG = 'pt-BR'
+
 export function useVoiceRecognition(props: UseVoiceRecognitionProps) {
   const { enabled, onColorRecognized } = props
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const shouldRestartRef = useRef(false)
+  const onColorRecognizedRef = useRef(onColorRecognized)
 
   const setListening = useHandStore((s) => s.setListening)
   const setVoicePermission = useHandStore((s) => s.setVoicePermission)
   const setLastRecognizedCommand = useHandStore((s) => s.setLastRecognizedCommand)
 
   useEffect(() => {
+    onColorRecognizedRef.current = onColorRecognized
+  }, [onColorRecognized])
+
+  useEffect(() => {
     if (!enabled) return
+    return startRecognition()
+    // reason: helpers leem apenas refs e setters estáveis do zustand
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled])
 
-    // reason: Web Speech API is browser-vendored and not in standard lib.dom types
-    const win = window as unknown as {
-      SpeechRecognition?: SpeechRecognitionCtor
-      webkitSpeechRecognition?: SpeechRecognitionCtor
-    }
-    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition
-
+  function startRecognition(): () => void {
+    const SpeechRecognition = getSpeechRecognitionCtor()
     if (!SpeechRecognition) {
       setVoicePermission('unsupported')
-      return
+      return () => undefined
     }
 
     const recognition = new SpeechRecognition()
-    recognition.lang = 'pt-BR'
+    recognition.lang = RECOGNITION_LANG
     recognition.continuous = true
     recognition.interimResults = true
     recognition.maxAlternatives = 1
 
+    recognition.onstart = handleStart
+    recognition.onresult = handleResult
+    recognition.onerror = handleError
+    recognition.onend = handleEnd
+
     recognitionRef.current = recognition
     shouldRestartRef.current = true
-
-    recognition.onstart = () => {
-      setListening(true)
-      setVoicePermission('granted')
-    }
-
-    recognition.onresult = (event) => {
-      const lastResultIdx = event.results.length - 1
-      const result = event.results[lastResultIdx]
-      if (!result.isFinal) return
-
-      const transcript = result[0].transcript
-      const match = matchVoiceCommand(transcript)
-      if (!match) return
-
-      setLastRecognizedCommand({
-        word: match.word,
-        color: match.color,
-        timestamp: Date.now(),
-      })
-      onColorRecognized(match.color)
-    }
-
-    recognition.onerror = (event) => {
-      console.warn('[voice] error:', event.error)
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setVoicePermission('denied')
-        shouldRestartRef.current = false
-      }
-    }
-
-    recognition.onend = () => {
-      setListening(false)
-      if (!shouldRestartRef.current) return
-      try {
-        recognition.start()
-      } catch (err) {
-        console.debug('[voice] restart skipped:', err)
-      }
-    }
 
     try {
       recognition.start()
@@ -126,19 +67,60 @@ export function useVoiceRecognition(props: UseVoiceRecognitionProps) {
       setVoicePermission('denied')
     }
 
-    return () => {
+    return () => stopRecognition(recognition)
+  }
+
+  function handleStart() {
+    setListening(true)
+    setVoicePermission('granted')
+  }
+
+  function handleResult(event: SpeechRecognitionEvent) {
+    const transcript = extractFinalTranscript(event)
+    if (transcript === null) return
+    const match = matchVoiceCommand(transcript)
+    if (!match) return
+
+    setLastRecognizedCommand({
+      word: match.word,
+      color: match.color,
+      timestamp: Date.now(),
+    })
+    onColorRecognizedRef.current(match.color)
+  }
+
+  function handleError(event: SpeechRecognitionErrorEvent) {
+    console.warn('[voice] error:', event.error)
+    if (isPermissionDeniedError(event.error)) {
+      setVoicePermission('denied')
       shouldRestartRef.current = false
-      try {
-        recognition.stop()
-      } catch {
-        // noop
-      }
-      recognition.onstart = null
-      recognition.onresult = null
-      recognition.onerror = null
-      recognition.onend = null
-      recognitionRef.current = null
-      setListening(false)
     }
-  }, [enabled, onColorRecognized, setListening, setVoicePermission, setLastRecognizedCommand])
+  }
+
+  function handleEnd() {
+    setListening(false)
+    if (!shouldRestartRef.current) return
+    const recognition = recognitionRef.current
+    if (!recognition) return
+    try {
+      recognition.start()
+    } catch {
+      // restart can race with the browser's own stop — safe to ignore
+    }
+  }
+
+  function stopRecognition(recognition: SpeechRecognitionInstance) {
+    shouldRestartRef.current = false
+    try {
+      recognition.stop()
+    } catch {
+      // noop
+    }
+    recognition.onstart = null
+    recognition.onresult = null
+    recognition.onerror = null
+    recognition.onend = null
+    recognitionRef.current = null
+    setListening(false)
+  }
 }
