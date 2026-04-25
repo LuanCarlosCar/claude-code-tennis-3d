@@ -5,7 +5,11 @@ import TenisScene from '@/components/scene/TenisScene'
 import Header from '@/components/ui/Header'
 import ProductPanel from '@/components/ui/ProductPanel'
 import MaskTuningPanel from '@/components/ui/MaskTuningPanel'
+import HandModeToggle from '@/components/ui/HandModeToggle'
+import HandStatusBadges from '@/components/ui/HandStatusBadges'
+import CameraPreview from '@/components/ui/CameraPreview'
 import { SHOE_COLORS } from '@/lib/colors'
+import { useHandStore } from '@/lib/handStore'
 
 export default function Home() {
   const [colorIndex, setColorIndex] = useState(0)
@@ -49,26 +53,50 @@ export default function Home() {
       </div>
 
       <MaskTuningPanel />
+      <HandModeToggle />
+      <HandStatusBadges />
+      <CameraPreview />
     </main>
   )
 }
 
 function SceneOverlay(props: { variantLabel: string }) {
   const { variantLabel } = props
+  const isHandModeEnabled = useHandStore((s) => s.isHandModeEnabled)
   return (
     <>
       <div className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2 [writing-mode:vertical-rl] rotate-180 font-mono text-[10px] uppercase tracking-[0.4em] text-white/30">
         AR-1 · {variantLabel} · 360°
       </div>
       <div className="pointer-events-none absolute bottom-6 right-8 flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-white/40">
-        <span className="flex items-center gap-1.5">
-          <RotateIcon />
-          Arraste
-        </span>
-        <span>·</span>
-        <span>Role pra zoom</span>
+        {isHandModeEnabled ? (
+          <span className="flex items-center gap-1.5">
+            <HandIcon />
+            Pegue o tênis com a mão
+          </span>
+        ) : (
+          <>
+            <span className="flex items-center gap-1.5">
+              <RotateIcon />
+              Arraste
+            </span>
+            <span>·</span>
+            <span>Role pra zoom</span>
+          </>
+        )}
       </div>
     </>
+  )
+}
+
+function HandIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 11V6a2 2 0 0 0-4 0v5" />
+      <path d="M14 10V4a2 2 0 0 0-4 0v6" />
+      <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+    </svg>
   )
 }
 

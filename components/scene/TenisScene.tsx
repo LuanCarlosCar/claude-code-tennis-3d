@@ -5,6 +5,7 @@ import { Canvas } from '@react-three/fiber'
 import { ContactShadows, Environment, OrbitControls } from '@react-three/drei'
 import Tenis from './Tenis'
 import LoadingState from '@/components/ui/LoadingState'
+import { useHandStore } from '@/lib/handStore'
 
 type Props = {
   bodyColor: string | null
@@ -13,6 +14,7 @@ type Props = {
 
 export default function TenisScene(props: Props) {
   const { bodyColor, accentColor } = props
+  const isHandModeEnabled = useHandStore((s) => s.isHandModeEnabled)
 
   return (
     <>
@@ -34,6 +36,7 @@ export default function TenisScene(props: Props) {
           />
         </Suspense>
         <OrbitControls
+          enabled={!isHandModeEnabled}
           enablePan={false}
           minDistance={1.2}
           maxDistance={5}

@@ -9,6 +9,7 @@ import {
   colorMaskUniforms,
   type ColorMaskUniforms,
 } from '@/lib/colorMaskStore'
+import { useHandStore } from '@/lib/handStore'
 
 type Props = {
   bodyColor: string | null
@@ -53,6 +54,8 @@ export default function Tenis(props: Props) {
   const targetBodyRef = useRef<THREE.Color>(new THREE.Color('#1a1a1a'))
   const targetAccentRef = useRef<THREE.Color>(new THREE.Color('#d4a98a'))
   const targetStrengthRef = useRef<number>(0)
+  const groupRef = useRef<THREE.Group>(null)
+  const targetQuatRef = useRef<THREE.Quaternion>(new THREE.Quaternion())
 
   useEffect(() => {
     if (bodyColor === null || accentColor === null) {
@@ -76,12 +79,30 @@ export default function Tenis(props: Props) {
       targetStrengthRef.current,
       lerpFactor,
     )
+
+    const group = groupRef.current
+    if (!group) return
+
+    const store = useHandStore.getState()
+    const target = store.targetQuaternion
+    if (target) {
+      targetQuatRef.current.set(target[0], target[1], target[2], target[3])
+      group.quaternion.slerp(targetQuatRef.current, 0.15)
+    }
+
+    const q = group.quaternion
+    const cur = store.currentShoeQuaternion
+    if (cur[0] !== q.x || cur[1] !== q.y || cur[2] !== q.z || cur[3] !== q.w) {
+      store.setCurrentShoeQuaternion([q.x, q.y, q.z, q.w])
+    }
   })
 
   return (
     <>
       <ModelDiagnostic scene={cloned.root} />
-      <primitive object={cloned.root} />
+      <group ref={groupRef}>
+        <primitive object={cloned.root} />
+      </group>
     </>
   )
 }
