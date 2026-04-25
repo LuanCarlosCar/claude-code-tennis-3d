@@ -5,15 +5,14 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import ModelDiagnostic from './ModelDiagnostic'
+import {
+  colorMaskUniforms,
+  type ColorMaskUniforms,
+} from '@/lib/colorMaskStore'
 
 type Props = {
-  color: string | null
-}
-
-type OriginalMaterialState = {
-  color: THREE.Color
-  map: THREE.Texture | null
-  vertexColors: boolean
+  bodyColor: string | null
+  accentColor: string | null
 }
 
 const MODEL_PATH = '/models/tenis.glb'
@@ -21,122 +20,62 @@ const MODEL_PATH = '/models/tenis.glb'
 useGLTF.preload(MODEL_PATH)
 
 export default function Tenis(props: Props) {
-  const { color } = props
+  const { bodyColor, accentColor } = props
   const { scene } = useGLTF(MODEL_PATH)
 
-  // reason: clone the scene AND clone each material so color overrides don't
-  // mutate the cached gltf shared by useGLTF. Geometry stays shared (heavy and
-  // safe to share). Disposing the cached materials/geometry would crash WebGL
-  // on remount (StrictMode / HMR).
   const cloned = useMemo(() => {
     const root = scene.clone(true)
     const ownedMaterials: THREE.Material[] = []
+
     root.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return
+
+      const wrap = (m: THREE.Material) => {
+        const next = m.clone()
+        attachColorReplaceShader(
+          next as THREE.MeshStandardMaterial,
+          colorMaskUniforms,
+        )
+        ownedMaterials.push(next)
+        return next
+      }
+
       if (Array.isArray(child.material)) {
-        child.material = child.material.map((m) => {
-          const c = m.clone()
-          ownedMaterials.push(c)
-          return c
-        })
+        child.material = child.material.map(wrap)
       } else if (child.material) {
-        const c = child.material.clone()
-        ownedMaterials.push(c)
-        child.material = c
+        child.material = wrap(child.material)
       }
     })
+
     return { root, ownedMaterials }
   }, [scene])
 
-  const originalsRef = useRef<Map<string, OriginalMaterialState>>(new Map())
-  const targetColorRef = useRef<THREE.Color | null>(null)
-  const isOriginalRef = useRef<boolean>(true)
+  const targetBodyRef = useRef<THREE.Color>(new THREE.Color('#1a1a1a'))
+  const targetAccentRef = useRef<THREE.Color>(new THREE.Color('#d4a98a'))
+  const targetStrengthRef = useRef<number>(0)
 
   useEffect(() => {
-    const originals = new Map<string, OriginalMaterialState>()
-
-    cloned.root.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return
-      const materials = Array.isArray(child.material)
-        ? child.material
-        : [child.material]
-
-      materials.forEach((rawMat, i) => {
-        const mat = rawMat as THREE.MeshStandardMaterial
-        const key = `${child.uuid}::${i}`
-        originals.set(key, {
-          color: mat.color.clone(),
-          map: mat.map ?? null,
-          vertexColors: mat.vertexColors,
-        })
-      })
-    })
-
-    originalsRef.current = originals
-
-    return () => {
-      cloned.ownedMaterials.forEach((m) => m.dispose())
-    }
-  }, [cloned])
-
-  useEffect(() => {
-    if (color === null) {
-      isOriginalRef.current = true
-      targetColorRef.current = null
-      cloned.root.traverse((child) => {
-        if (!(child instanceof THREE.Mesh)) return
-        const materials = Array.isArray(child.material)
-          ? child.material
-          : [child.material]
-
-        materials.forEach((rawMat, i) => {
-          const mat = rawMat as THREE.MeshStandardMaterial
-          const key = `${child.uuid}::${i}`
-          const original = originalsRef.current.get(key)
-          if (!original) return
-          mat.color.copy(original.color)
-          mat.map = original.map
-          mat.vertexColors = original.vertexColors
-          mat.needsUpdate = true
-        })
-      })
+    if (bodyColor === null || accentColor === null) {
+      targetStrengthRef.current = 0
       return
     }
-
-    isOriginalRef.current = false
-    targetColorRef.current = new THREE.Color(color)
-
-    cloned.root.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return
-      const materials = Array.isArray(child.material)
-        ? child.material
-        : [child.material]
-
-      materials.forEach((rawMat) => {
-        const mat = rawMat as THREE.MeshStandardMaterial
-        if (mat.map) mat.map = null
-        if (mat.vertexColors) mat.vertexColors = false
-        mat.needsUpdate = true
-      })
-    })
-  }, [color, cloned])
+    targetBodyRef.current = new THREE.Color(bodyColor)
+    targetAccentRef.current = new THREE.Color(accentColor)
+    targetStrengthRef.current = 1
+  }, [bodyColor, accentColor])
 
   useFrame((_, delta) => {
-    const target = targetColorRef.current
-    if (!target || isOriginalRef.current) return
-
     const lerpFactor = 1 - Math.pow(0.001, delta)
-
-    cloned.root.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return
-      const materials = Array.isArray(child.material)
-        ? child.material
-        : [child.material]
-      materials.forEach((rawMat) => {
-        const mat = rawMat as THREE.MeshStandardMaterial
-        mat.color.lerp(target, lerpFactor)
-      })
-    })
+    colorMaskUniforms.uTargetColor.value.lerp(targetBodyRef.current, lerpFactor)
+    colorMaskUniforms.uAccentColor.value.lerp(
+      targetAccentRef.current,
+      lerpFactor,
+    )
+    colorMaskUniforms.uReplaceStrength.value = THREE.MathUtils.lerp(
+      colorMaskUniforms.uReplaceStrength.value,
+      targetStrengthRef.current,
+      lerpFactor,
+    )
   })
 
   return (
@@ -145,4 +84,59 @@ export default function Tenis(props: Props) {
       <primitive object={cloned.root} />
     </>
   )
+}
+
+function attachColorReplaceShader(
+  material: THREE.MeshStandardMaterial,
+  uniforms: ColorMaskUniforms,
+) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTargetColor = uniforms.uTargetColor
+    shader.uniforms.uAccentColor = uniforms.uAccentColor
+    shader.uniforms.uReplaceStrength = uniforms.uReplaceStrength
+    shader.uniforms.uThreshold = uniforms.uThreshold
+    shader.uniforms.uSoftness = uniforms.uSoftness
+    shader.uniforms.uAccentThreshold = uniforms.uAccentThreshold
+    shader.uniforms.uAccentSoftness = uniforms.uAccentSoftness
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      `#include <common>
+      uniform vec3 uTargetColor;
+      uniform vec3 uAccentColor;
+      uniform float uReplaceStrength;
+      uniform float uThreshold;
+      uniform float uSoftness;
+      uniform float uAccentThreshold;
+      uniform float uAccentSoftness;
+      `,
+    )
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      `
+      #ifdef USE_MAP
+        vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+        vec3 srcRgb = sampledDiffuseColor.rgb;
+
+        float lum = dot(srcRgb, vec3(0.299, 0.587, 0.114));
+        float darkMask = 1.0 - smoothstep(uThreshold - uSoftness, uThreshold + uSoftness, lum);
+
+        float maxC = max(max(srcRgb.r, srcRgb.g), srcRgb.b);
+        float minC = min(min(srcRgb.r, srcRgb.g), srcRgb.b);
+        float sat = maxC > 0.0 ? (maxC - minC) / maxC : 0.0;
+        float accentMask = smoothstep(uAccentThreshold - uAccentSoftness, uAccentThreshold + uAccentSoftness, sat);
+
+        accentMask *= (1.0 - darkMask);
+
+        vec3 afterDark = mix(srcRgb, uTargetColor, darkMask * uReplaceStrength);
+        vec3 afterAccent = mix(afterDark, uAccentColor, accentMask * uReplaceStrength);
+
+        sampledDiffuseColor.rgb = afterAccent;
+        diffuseColor *= sampledDiffuseColor;
+      #endif
+      `,
+    )
+  }
+  material.needsUpdate = true
 }

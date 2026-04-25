@@ -7,23 +7,24 @@ import Tenis from './Tenis'
 import LoadingState from '@/components/ui/LoadingState'
 
 type Props = {
-  color: string | null
+  bodyColor: string | null
+  accentColor: string | null
 }
 
 export default function TenisScene(props: Props) {
-  const { color } = props
+  const { bodyColor, accentColor } = props
 
   return (
     <>
       <Canvas
         className="absolute inset-0"
-        camera={{ position: [0, 0, 3], fov: 45 }}
+        camera={{ position: [1.5, 0.45, 1.7], fov: 38 }}
         dpr={[1, 2]}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
         <Suspense fallback={null}>
           <Environment preset="studio" />
-          <Tenis color={color} />
+          <Tenis bodyColor={bodyColor} accentColor={accentColor} />
           <ContactShadows
             position={[0, -0.6, 0]}
             opacity={0.5}
@@ -34,7 +35,7 @@ export default function TenisScene(props: Props) {
         </Suspense>
         <OrbitControls
           enablePan={false}
-          minDistance={1.5}
+          minDistance={1.2}
           maxDistance={5}
           enableDamping
           dampingFactor={0.05}
