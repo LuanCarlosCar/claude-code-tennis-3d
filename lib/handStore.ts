@@ -1,8 +1,15 @@
 import { create } from 'zustand'
 
 export type CameraPermission = 'idle' | 'requesting' | 'granted' | 'denied'
+export type VoicePermission = 'idle' | 'requesting' | 'granted' | 'denied' | 'unsupported'
 
 type Quat = [number, number, number, number]
+
+export interface RecognizedCommand {
+  word: string
+  color: string | null
+  timestamp: number
+}
 
 interface HandState {
   isHandModeEnabled: boolean
@@ -24,6 +31,16 @@ interface HandState {
 
   currentShoeQuaternion: Quat
   setCurrentShoeQuaternion: (q: Quat) => void
+
+  isVoiceEnabled: boolean
+  voicePermission: VoicePermission
+  isListening: boolean
+  lastRecognizedCommand: RecognizedCommand | null
+  toggleVoice: () => void
+  setVoiceEnabled: (v: boolean) => void
+  setVoicePermission: (p: VoicePermission) => void
+  setListening: (v: boolean) => void
+  setLastRecognizedCommand: (cmd: RecognizedCommand | null) => void
 }
 
 export const useHandStore = create<HandState>((set) => ({
@@ -46,4 +63,14 @@ export const useHandStore = create<HandState>((set) => ({
 
   currentShoeQuaternion: [0, 0, 0, 1],
   setCurrentShoeQuaternion: (q) => set({ currentShoeQuaternion: q }),
+
+  isVoiceEnabled: false,
+  voicePermission: 'idle',
+  isListening: false,
+  lastRecognizedCommand: null,
+  toggleVoice: () => set((s) => ({ isVoiceEnabled: !s.isVoiceEnabled })),
+  setVoiceEnabled: (v) => set({ isVoiceEnabled: v }),
+  setVoicePermission: (p) => set({ voicePermission: p }),
+  setListening: (v) => set({ isListening: v }),
+  setLastRecognizedCommand: (cmd) => set({ lastRecognizedCommand: cmd }),
 }))

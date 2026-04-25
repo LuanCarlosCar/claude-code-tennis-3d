@@ -56,6 +56,7 @@ export default function Tenis(props: Props) {
   const targetStrengthRef = useRef<number>(0)
   const groupRef = useRef<THREE.Group>(null)
   const targetQuatRef = useRef<THREE.Quaternion>(new THREE.Quaternion())
+  const prevTargetQuatRef = useRef<THREE.Quaternion | null>(null)
 
   useEffect(() => {
     if (bodyColor === null || accentColor === null) {
@@ -86,8 +87,42 @@ export default function Tenis(props: Props) {
     const store = useHandStore.getState()
     const target = store.targetQuaternion
     if (target) {
-      targetQuatRef.current.set(target[0], target[1], target[2], target[3])
-      group.quaternion.slerp(targetQuatRef.current, 0.15)
+      const tq = targetQuatRef.current
+      tq.set(target[0], target[1], target[2], target[3])
+
+      // Continuidade de hemisfério vs target anterior — slerp sempre pelo caminho curto.
+      const prev = prevTargetQuatRef.current
+      if (prev && tq.dot(prev) < 0) {
+        tq.set(-tq.x, -tq.y, -tq.z, -tq.w)
+      }
+
+      // One-Euro-style: cutoff adapta à velocidade angular do target.
+      // Parado → muito smoothing (corta jitter da detecção).
+      // Rápido → mais responsivo, mas com cap de alpha pra que viradas
+      // bruscas sejam interpoladas em várias frames (sem snap visível).
+      let alpha = 0.08
+      if (prev) {
+        const dot = Math.min(1, Math.abs(tq.dot(prev)))
+        const angDelta = 2 * Math.acos(dot)
+        const angSpeed = angDelta / Math.max(delta, 0.001)
+        const minCutoff = 0.6
+        const beta = 0.08
+        const fc = minCutoff + beta * angSpeed
+        const tau = 1 / (2 * Math.PI * fc)
+        alpha = delta / (tau + delta)
+      }
+      // reason: even on very fast hand motion, never approach the target by
+      // more than ~18% per frame — keeps the rotation reading as a smooth
+      // glide instead of a snap.
+      alpha = Math.min(alpha, 0.18)
+
+      group.quaternion.slerp(tq, alpha)
+
+      if (prev) {
+        prev.copy(tq)
+      } else {
+        prevTargetQuatRef.current = tq.clone()
+      }
     }
 
     const q = group.quaternion

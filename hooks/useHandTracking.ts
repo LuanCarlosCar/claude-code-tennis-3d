@@ -6,7 +6,7 @@ import {
   HAND_CONNECTIONS,
   Landmark,
   computeHandQuaternion,
-  mirrorLandmarks,
+  computePalmConfidence,
 } from '@/lib/handGeometry'
 
 interface UseHandTrackingProps {
@@ -18,9 +18,15 @@ interface UseHandTrackingProps {
 const TARGET_INTERVAL_MS = 33
 const SUNSET = '#D4763C'
 
+// Estabilização: descarta frames onde a base da palma está mal condicionada (edge-on)
+// ou onde o quaternion deu salto angular grande (provável flip espúrio do MediaPipe).
+const PALM_CONFIDENCE_MIN = 0.4
+const MAX_FRAME_DELTA_RAD = Math.PI / 6 // 30°
+
 // Offset fixo aplicado no frame local do tênis ANTES da rotação da mão.
-// Alinha o "topo do tênis" (Y local) com a normal da palma (Z no frame da mão),
-// fazendo a sola "encostar" na palma. Ajuste fino se a orientação parecer torta.
+// Alinha o eixo Y local (topo do cano) com a normal da palma INVERTIDA, fazendo
+// a SOLA encostar na palma e o cano apontar pra fora. Se inverter o sinal,
+// o tênis vira de cabeça pra baixo (topo na mão).
 const SHOE_GRIP_OFFSET = new THREE.Quaternion().setFromEuler(
   new THREE.Euler(Math.PI / 2, 0, 0),
 )
@@ -38,6 +44,7 @@ export function useHandTracking(props: UseHandTrackingProps) {
   const lastInferRef = useRef(0)
   const rafRef = useRef<number | null>(null)
   const landmarkerRef = useRef<HandLandmarker | null>(null)
+  const lastHandQuatRef = useRef<THREE.Quaternion | null>(null)
 
   useEffect(() => {
     if (!enabled) return
@@ -76,23 +83,41 @@ export function useHandTracking(props: UseHandTrackingProps) {
       grippingRef.current = false
     }
 
-    function processFrame(landmarksRaw: Landmark[]) {
-      const landmarks = mirrorLandmarks(landmarksRaw)
-      const handQuat = computeHandQuaternion(landmarks)
+    function processFrame(imageLandmarks: Landmark[], worldLandmarks: Landmark[]) {
       const store = useHandStore.getState()
 
-      // Mão detectada = grip ativo. Não exige curvar dedos.
+      // Mão presente — sempre marca detected/grip; rotação só é atualizada
+      // se o frame passar nos gates de qualidade abaixo.
       grippingRef.current = true
       armedRef.current = true
-
-      const target = handQuat.clone().multiply(SHOE_GRIP_OFFSET)
-      store.setTargetQuaternion([target.x, target.y, target.z, target.w])
-
       store.setHandDetected(true)
       store.setArmed(true)
       store.setGripping(true)
+      drawSkeleton(imageLandmarks, true)
 
-      drawSkeleton(landmarksRaw, true)
+      // Gate 1: palma muito edge-on → base mal condicionada, descarta frame.
+      const palmConfidence = computePalmConfidence(worldLandmarks)
+      if (palmConfidence < PALM_CONFIDENCE_MIN) return
+
+      const handQuat = computeHandQuaternion(worldLandmarks)
+
+      // Continuidade de hemisfério: evita slerp pelo "long path".
+      const last = lastHandQuatRef.current
+      if (last && handQuat.dot(last) < 0) {
+        handQuat.set(-handQuat.x, -handQuat.y, -handQuat.z, -handQuat.w)
+      }
+
+      // Gate 2: salto angular grande entre frames → provável flip espúrio, descarta.
+      if (last) {
+        const dot = Math.min(1, Math.abs(handQuat.dot(last)))
+        const angle = 2 * Math.acos(dot)
+        if (angle > MAX_FRAME_DELTA_RAD) return
+      }
+
+      lastHandQuatRef.current = handQuat.clone()
+
+      const target = handQuat.clone().multiply(SHOE_GRIP_OFFSET)
+      store.setTargetQuaternion([target.x, target.y, target.z, target.w])
     }
 
     function drawSkeleton(landmarks: Landmark[], gripping: boolean) {
@@ -153,13 +178,22 @@ export function useHandTracking(props: UseHandTrackingProps) {
         return
       }
 
-      if (!result.landmarks || result.landmarks.length === 0) {
+      if (
+        !result.landmarks ||
+        result.landmarks.length === 0 ||
+        !result.worldLandmarks ||
+        result.worldLandmarks.length === 0
+      ) {
         resetState()
         clearCanvas()
+        lastHandQuatRef.current = null
         return
       }
 
-      processFrame(result.landmarks[0] as Landmark[])
+      processFrame(
+        result.landmarks[0] as Landmark[],
+        result.worldLandmarks[0] as Landmark[],
+      )
     }
 
     init()

@@ -29,6 +29,24 @@ export function computeAvgCurl(landmarks: Landmark[]): number {
   return (indexCurl + middleCurl + ringCurl + pinkyCurl) / 4
 }
 
+// Confiança da normal da palma: módulo do produto vetorial xAxis × yAxis ANTES de normalizar.
+// Próximo de 1 = palma de frente pra câmera (basis bem condicionada).
+// Próximo de 0 = palma edge-on (Z dos landmarks ambíguo, base instável → quaternion errado).
+export function computePalmConfidence(landmarks: Landmark[]): number {
+  const wrist = new THREE.Vector3(landmarks[0].x, landmarks[0].y, landmarks[0].z)
+  const middleBase = new THREE.Vector3(landmarks[9].x, landmarks[9].y, landmarks[9].z)
+  const indexBase = new THREE.Vector3(landmarks[5].x, landmarks[5].y, landmarks[5].z)
+  const pinkyBase = new THREE.Vector3(landmarks[17].x, landmarks[17].y, landmarks[17].z)
+
+  const yRaw = middleBase.clone().sub(wrist)
+  const xRaw = pinkyBase.clone().sub(indexBase)
+  const yLen = yRaw.length()
+  const xLen = xRaw.length()
+  if (yLen === 0 || xLen === 0) return 0
+  const cross = new THREE.Vector3().crossVectors(xRaw, yRaw)
+  return cross.length() / (xLen * yLen)
+}
+
 export function computeHandQuaternion(landmarks: Landmark[]): THREE.Quaternion {
   const wrist = new THREE.Vector3(landmarks[0].x, landmarks[0].y, landmarks[0].z)
   const middleBase = new THREE.Vector3(landmarks[9].x, landmarks[9].y, landmarks[9].z)
