@@ -20,17 +20,17 @@ export default function ProductPanel(props: Props) {
   const variant = SHOE_COLORS[colorIndex]
 
   return (
-    <aside className="relative z-10 flex h-full flex-col justify-between px-10 pt-28 pb-8 max-w-[560px]">
-      <div className="flex flex-col gap-6">
+    <aside className="relative z-10 mx-auto flex h-full w-full max-w-140 flex-col justify-between gap-6 px-5 pt-8 pb-8 sm:px-8 lg:max-w-none lg:px-10 lg:pt-28">
+      <div className="flex flex-col gap-5 sm:gap-6">
         <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/50">
           <span className="h-px w-8 bg-white/30" />
           <span>Drop 01 · 2026 · Numerado</span>
         </div>
 
         <div className="space-y-2">
-          <h1 className="font-sans text-5xl font-bold leading-[1.05] tracking-tight text-white xl:text-6xl">
+          <h1 className="font-sans text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl xl:text-6xl">
             Air Reasoning
-            <span className="block font-mono text-2xl font-normal tracking-wider text-white/60 mt-2">
+            <span className="block font-mono text-xl font-normal tracking-wider text-white/60 mt-2 sm:text-2xl">
               {variant.label}
             </span>
           </h1>
@@ -91,11 +91,11 @@ export default function ProductPanel(props: Props) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-white/10 pt-4 font-mono text-[10px] uppercase tracking-widest text-white/40">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-white/10 pt-4 font-mono text-[10px] uppercase tracking-widest text-white/40">
         <span>Frete grátis BR</span>
-        <span>·</span>
-        <span>Apenas 12 pares restantes</span>
-        <span>·</span>
+        <span aria-hidden>·</span>
+        <span>12 pares restantes</span>
+        <span aria-hidden>·</span>
         <span>Drop 25/04</span>
       </div>
     </aside>

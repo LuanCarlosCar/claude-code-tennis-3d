@@ -23,6 +23,14 @@ const SUNSET = '#D4763C'
 const PALM_CONFIDENCE_MIN = 0.4
 const MAX_FRAME_DELTA_RAD = Math.PI / 6 // 30°
 
+// Mapeamento tamanho-da-palma → distância da câmera (zoom).
+// Tamanho é a distância normalizada (0..1) entre wrist (0) e middle-MCP (9)
+// no frame da imagem. Valores típicos: ~0.10 (mão longe) a ~0.42 (mão perto).
+const PALM_SIZE_MIN = 0.16 // tudo abaixo disso = zoom mín (longe)
+const PALM_SIZE_MAX = 0.50 // tudo acima disso = zoom máx (perto)
+const CAMERA_DIST_FAR = 4.0
+const CAMERA_DIST_NEAR = 1.4
+
 // Offset fixo aplicado no frame local do tênis ANTES da rotação da mão.
 // Alinha o eixo Y local (topo do cano) com a normal da palma INVERTIDA, fazendo
 // a SOLA encostar na palma e o cano apontar pra fora. Se inverter o sinal,
@@ -118,6 +126,18 @@ export function useHandTracking(props: UseHandTrackingProps) {
 
       const target = handQuat.clone().multiply(SHOE_GRIP_OFFSET)
       store.setTargetQuaternion([target.x, target.y, target.z, target.w])
+
+      // Distância da câmera derivada do tamanho da palma na imagem.
+      const wrist = imageLandmarks[0]
+      const middleMcp = imageLandmarks[9]
+      const dx = middleMcp.x - wrist.x
+      const dy = middleMcp.y - wrist.y
+      const palmSize = Math.sqrt(dx * dx + dy * dy)
+      const t = clamp01(
+        (palmSize - PALM_SIZE_MIN) / (PALM_SIZE_MAX - PALM_SIZE_MIN),
+      )
+      const distance = CAMERA_DIST_FAR + (CAMERA_DIST_NEAR - CAMERA_DIST_FAR) * t
+      store.setTargetDistance(distance)
     }
 
     function drawSkeleton(landmarks: Landmark[], gripping: boolean) {
@@ -216,6 +236,13 @@ export function useHandTracking(props: UseHandTrackingProps) {
       }
       const store = useHandStore.getState()
       store.setTargetQuaternion(null)
+      store.setTargetDistance(null)
     }
   }, [enabled, videoRef, canvasRef])
+}
+
+function clamp01(v: number): number {
+  if (v < 0) return 0
+  if (v > 1) return 1
+  return v
 }

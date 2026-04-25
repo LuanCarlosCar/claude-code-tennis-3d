@@ -56,20 +56,22 @@ export default function Home() {
 
       <Header />
 
-      <div className="relative z-10 grid min-h-screen w-full grid-cols-1 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(360px,42%)_1fr]">
-        <div className="order-2 lg:order-1">
-          <ProductPanel
-            colorIndex={colorIndex}
-            onSelectVariant={handleSelect}
-          />
-        </div>
-
-        <div className="relative order-1 h-[70vh] min-h-120 lg:order-2 lg:h-full">
+      <div className="relative z-10 grid w-full grid-cols-1 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(360px,42%)_1fr]">
+        <div
+          className="relative order-1 h-[55vh] min-h-90 w-full touch-pan-y lg:order-2 lg:h-full lg:touch-none"
+        >
           <TenisScene
             bodyColor={current.body}
             accentColor={current.accent}
           />
           <SceneOverlay variantLabel={current.label} />
+        </div>
+
+        <div className="order-2 lg:order-1">
+          <ProductPanel
+            colorIndex={colorIndex}
+            onSelectVariant={handleSelect}
+          />
         </div>
       </div>
 
@@ -90,10 +92,10 @@ function SceneOverlay(props: { variantLabel: string }) {
   const isVoiceEnabled = useHandStore((s) => s.isVoiceEnabled)
   return (
     <>
-      <div className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2 [writing-mode:vertical-rl] rotate-180 font-mono text-[10px] uppercase tracking-[0.4em] text-white/30">
+      <div className="pointer-events-none absolute top-1/2 right-4 hidden -translate-y-1/2 [writing-mode:vertical-rl] rotate-180 font-mono text-[10px] uppercase tracking-[0.4em] text-white/30 sm:right-8 lg:block">
         AR-1 · {variantLabel} · 360°
       </div>
-      <div className="pointer-events-none absolute bottom-6 right-8 flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-white/40">
+      <div className="pointer-events-none absolute bottom-3 right-4 flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-white/40 sm:bottom-6 sm:right-8 sm:gap-3 sm:text-[10px]">
         {isVoiceEnabled ? (
           <span className="flex items-center gap-1.5">
             <MicIcon />

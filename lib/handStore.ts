@@ -29,6 +29,9 @@ interface HandState {
   targetQuaternion: Quat | null
   setTargetQuaternion: (q: Quat | null) => void
 
+  targetDistance: number | null
+  setTargetDistance: (d: number | null) => void
+
   currentShoeQuaternion: Quat
   setCurrentShoeQuaternion: (q: Quat) => void
 
@@ -60,6 +63,9 @@ export const useHandStore = create<HandState>((set) => ({
 
   targetQuaternion: null,
   setTargetQuaternion: (q) => set({ targetQuaternion: q }),
+
+  targetDistance: null,
+  setTargetDistance: (d) => set({ targetDistance: d }),
 
   currentShoeQuaternion: [0, 0, 0, 1],
   setCurrentShoeQuaternion: (q) => set({ currentShoeQuaternion: q }),
